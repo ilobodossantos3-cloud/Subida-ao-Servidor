@@ -3,9 +3,6 @@
 Jogo de tabuleiro em Java (Swing) para 2 a 4 jogadores.
 Projeto de Programação Orientada a Objetos, UAL, 2026–2027.
 
-> **Estado:** marco de outubro (rascunho). Regras, mapa do tabuleiro e desenho inicial.
-> Os campos marcados com `[PREENCHER]` completam-se à medida que o projeto avança.
-
 ---
 
 ## 1. Tema
