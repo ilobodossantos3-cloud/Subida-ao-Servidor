@@ -123,8 +123,9 @@ Resumo fiel da secção **8. Divisão de tarefas** do `README.md`.
 | Aluno | Área principal | Contribuições concretas |
 |---|---|---|
 | **A — Igor Santos (30016495)** | Estrutura e entidades do modelo | `Cell`, `NormalCell`, `AdvanceCell`, `ReturnCell`, `Effect`, `Zone`, `Board` e `Player`; catálogo `Avatar`; validação das casas e dos destinos; testes de movimento básico, casas partilhadas e dos 15 efeitos. |
-| **B — Pedro Moroni (30016458)** | Motor de jogo e controlo | `Game`, `GameResult`, `TurnEvent`, ressalto, `Dice`, `RandomDice`, `ManualDice`, validação, `GameObserver`; `FirewallQuestion` e `QuestionBank`; fluxo de turno em duas fases para as firewalls; testes de integração, ressalto do 50, perguntas e fim às 40 rondas. |
-| **C — Cleiton Muangala (30016337)** | Interface gráfica Swing | `MainWindow`, `BoardPanel`, `ControlPanel`, `DicePanel`, `LogPanel`; ecrã de configuração com avatares; dado único clicável; movimento cadenciado e animação de chegada; diálogo da firewall; mockup artístico, sons e screenshots. |
+| **B — Pedro Moroni (30016458)** | Motor de jogo e controlo de turnos | `Game`, `GameResult`, `TurnEvent`, `GameObserver`; ressalto, passagem de vez, vitória, limite de 40 rondas e empate; fluxo de turno em duas fases para as firewalls (`playTurn` e `answerFirewall`); validação de avatares únicos em `Game.start`; testes de integração, ressalto do 50 e fim às 40 rondas. |
+| **C — Cleiton Muangala (30016337)** | Interface gráfica: janela e tabuleiro | `MainWindow` e `BoardPanel`; ecrã de configuração com escolha de avatares; desenho do tabuleiro em serpentina; movimento casa a casa e animação de chegada; diálogo da firewall; mockup artístico e screenshots. |
+| **D — Gonçalo Veríssimo (n.º `[PREENCHER]`)** | Dados, perguntas das firewalls e painéis de controlo | `Dice`, `RandomDice`, `ManualDice` e `InvalidDiceValueException` (validação do dado); `FirewallQuestion` e `QuestionBank`; `ControlPanel`, `DicePanel` (dado único clicável com giro) e `LogPanel`; `SoundEffects` e opção de desligar os sons; testes dos dados e das perguntas. |
 
 **Trabalho transversal:** as três áreas foram revistas em conjunto. A regra da firewall obrigou a alterar `Board`, `Game`, `TurnEvent`, `MainWindow` e os testes; essa alteração foi discutida e validada pelo grupo antes de ser integrada.
 
