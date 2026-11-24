@@ -1,11 +1,9 @@
-/*
- * Módulo: rootaccess.model.Zone
- * Propósito: enumeração das cinco zonas da rede da NexaCorp (cada zona
- *            corresponde a uma linha do tabuleiro, com 10 casas).
- * Aluno: A - Igor Santos (30016495)
- * Revisor: [a preencher]
- * Uso de IA: Sim - ver AI_USE.md
- */
+// Módulo: rootaccess.model.Zone
+// Propósito: enumeração das cinco zonas da rede da NexaCorp (cada zona
+// corresponde a uma linha do tabuleiro, com 10 casas).
+// Aluno: A - Igor Santos (30016495)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
 package rootaccess.model;
 
 public enum Zone {
@@ -32,7 +30,7 @@ public enum Zone {
     public int getLastCell() { return lastCell; }
     public String getColorName() { return colorName; }
 
-    /** Devolve a zona a que pertence a casa indicada (1 a 50). */
+    // Devolve a zona a que pertence a casa indicada (1 a 50).
     public static Zone of(int cellNumber) {
         for (Zone z : values()) {
             if (cellNumber >= z.firstCell && cellNumber <= z.lastCell) {

@@ -1,11 +1,9 @@
-/*
- * Módulo: rootaccess.BoardTest
- * Propósito: testes JUnit 5 do tabuleiro: composição das 50 casas, os 15
- *            efeitos, movimento básico (via Board + Player) e casas partilhadas.
- * Aluno: A - Igor Santos (30016495)
- * Revisor: [a preencher]
- * Uso de IA: Sim - ver AI_USE.md
- */
+// Módulo: rootaccess.BoardTest
+// Propósito: testes JUnit 5 do tabuleiro: composição das 50 casas, os 15
+// efeitos, movimento básico (via Board + Player) e casas partilhadas.
+// Aluno: A - Igor Santos (30016495)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
 package rootaccess;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import rootaccess.model.*;
 
 class BoardTest {
@@ -79,12 +78,22 @@ class BoardTest {
 
     @ParameterizedTest(name = "casa {0} -> {1}")
     @CsvSource({
-        "4,13", "8,21", "11,2", "16,27", "18,6", "22,34", "25,14", "28,39",
-        "30,19", "32,43", "35,24", "36,46", "40,29", "41,48", "44,33"
+        "4,13", "8,21", "16,27", "18,6", "22,34", "28,39",
+        "30,19", "32,43", "36,46", "40,29", "41,48"
     })
     void efeitoLevaAoDestinoCorreto(int casa, int destino) {
         assertTrue(board.getCell(casa).hasEffect());
         assertEquals(destino, board.applyEffect(casa));
+    }
+
+    @ParameterizedTest(name = "firewall {0} fica à espera")
+    @ValueSource(ints = {11, 25, 35, 44})
+    void firewallMantemOPeaoNaCasaAteAResposta(int casa) {
+        // A firewall continua a ser uma casa de efeito, mas já não recua sozinha.
+        assertTrue(board.getCell(casa).hasEffect());
+        assertTrue(board.isFirewall(casa));
+        // Antes da pergunta, o tabuleiro devolve a própria casa.
+        assertEquals(casa, board.applyEffect(casa));
     }
 
     @Test
@@ -119,7 +128,7 @@ class BoardTest {
     @CsvSource({
         "0,3,3",    // movimento normal
         "1,3,13",   // brecha 4 -> 13
-        "9,2,2",    // firewall 11 -> 2
+        "9,2,11",   // firewall 11: fica à espera da pergunta
         "14,4,6",   // honeypot 18 -> 6
         "47,3,50"   // chegada exata ao Root
     })
