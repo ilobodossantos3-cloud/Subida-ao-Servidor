@@ -1,11 +1,9 @@
-/*
- * Módulo: rootaccess.model.AdvanceCell
- * Propósito: casa de avanço (brecha / exploit): leva o peão para uma casa
- *            mais à frente.
- * Aluno: A - Igor Santos (30016495)
- * Revisor: [a preencher]
- * Uso de IA: Sim - ver AI_USE.md
- */
+// Módulo: rootaccess.model.AdvanceCell
+// Propósito: casa de avanço (brecha / exploit): leva o peão para uma casa
+// mais à frente.
+// Aluno: A - Igor Santos (30016495)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
 package rootaccess.model;
 
 public class AdvanceCell extends Cell implements Effect {

@@ -1,12 +1,10 @@
-/*
- * Módulo: rootaccess.model.Board
- * Propósito: tabuleiro com as 50 casas (15 com efeito). Constrói as casas,
- *            valida que nenhum destino é casa de efeito e aplica o efeito
- *            de uma casa uma só vez.
- * Aluno: A - Igor Santos (30016495)
- * Revisor: [a preencher]
- * Uso de IA: Sim - ver AI_USE.md
- */
+// Módulo: rootaccess.model.Board
+// Propósito: tabuleiro com as 50 casas (15 com efeito). Constrói as casas,
+// valida que nenhum destino é casa de efeito e aplica o efeito
+// de uma casa uma só vez.
+// Aluno: A - Igor Santos (30016495)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
 package rootaccess.model;
 
 import java.util.ArrayList;
@@ -35,7 +33,7 @@ public class Board {
         "Servidor de certificados", "Servidor de auditoria", "Gestor de segredos", "Porta do Root", "Root"
     };
 
-    /** {casa, destino} */
+    // {casa, destino}
     private static final int[][] ADVANCES = {
         {4, 13}, {8, 21}, {16, 27}, {22, 34}, {28, 39}, {32, 43}, {36, 46}, {41, 48}
     };
@@ -65,7 +63,7 @@ public class Board {
         return new NormalCell(n, name);
     }
 
-    /** Garante que não há encadeamentos: nenhum destino é casa de efeito. */
+    // Garante que não há encadeamentos: nenhum destino é casa de efeito.
     private void validate() {
         for (Cell c : cells) {
             if (c instanceof Effect e && getCell(e.getDestination()).hasEffect()) {
@@ -75,7 +73,7 @@ public class Board {
         }
     }
 
-    /** Devolve a casa com o número indicado (1 a 50). */
+    // Devolve a casa com o número indicado (1 a 50).
     public Cell getCell(int number) {
         if (number < 1 || number > SIZE) {
             throw new IllegalArgumentException("Casa inexistente: " + number);
@@ -85,12 +83,31 @@ public class Board {
 
     public List<Cell> getCells() { return Collections.unmodifiableList(cells); }
 
-    /**
-     * Aplica o efeito da casa uma só vez. A posição 0 (fora do tabuleiro)
-     * fica como está.
-     */
+    // Indica se a casa é uma firewall, que agora funciona como ponto de verificação.
+    public boolean isFirewall(int position) {
+        // Posições fora do tabuleiro nunca são firewalls.
+        if (position < 1 || position > SIZE) {
+            return false;
+        }
+        // O tipo da casa vem do modelo ReturnCell.
+        Cell cell = cells.get(position - 1);
+        return cell instanceof ReturnCell returnCell
+                && returnCell.getKind() == ReturnCell.Kind.FIREWALL;
+    }
+
+    // Aplica o efeito da casa uma só vez.
+    // As firewalls não recuam automaticamente: o Game trata da pergunta.
+    // A posição 0 (fora do tabuleiro) fica como está.
     public int applyEffect(int position) {
-        if (position == 0) return 0;
+        // Fora do tabuleiro não há casa para consultar.
+        if (position == 0) {
+            return 0;
+        }
+        // A firewall mantém o peão no sítio até à resposta do jogador.
+        if (isFirewall(position)) {
+            return position;
+        }
+        // Avanços e honeypots continuam a redirecionar na hora.
         return getCell(position).redirect();
     }
 

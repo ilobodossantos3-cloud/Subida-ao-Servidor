@@ -1,9 +1,9 @@
-/* Module and purpose: rootaccess.gui.LogPanel - Painel de registo de eventos (terminal hacker).
-- Student name/number and implemented contributions: Cleiton Muangala (30016337) - Implementação completa do LogPanel, formatação temporal e estilo visual de terminal.
-- Collaborator/reviewer and contribution: Pedro Moroni (30016458) - Revisão da integração com as mensagens de TurnEvent.
-- AI assistance: Auxílio na estruturação visual dos componentes Swing (ver AI_USE.md).
- */
-package rootaccess.gui;
+// Módulo: rootaccess.view.LogPanel
+// Propósito: registo de eventos em estilo de terminal, com hora em cada linha.
+// Aluno: C - Cleiton Muangala (30016337)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
+package rootaccess.view;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

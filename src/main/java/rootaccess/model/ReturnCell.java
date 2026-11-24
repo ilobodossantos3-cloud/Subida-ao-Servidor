@@ -1,16 +1,14 @@
-/*
- * Módulo: rootaccess.model.ReturnCell
- * Propósito: casa de recuo (firewall ou honeypot): leva o peão para uma
- *            casa mais atrás. O tipo serve para a GUI escolher o ícone.
- * Aluno: A - Igor Santos (30016495)
- * Revisor: [a preencher]
- * Uso de IA: Sim - ver AI_USE.md
- */
+// Módulo: rootaccess.model.ReturnCell
+// Propósito: casa de recuo (firewall ou honeypot): leva o peão para uma
+// casa mais atrás. O tipo serve para a GUI escolher o ícone.
+// Aluno: A - Igor Santos (30016495)
+// Revisor: [a preencher]
+// Uso de IA: Sim - ver AI_USE.md
 package rootaccess.model;
 
 public class ReturnCell extends Cell implements Effect {
 
-    /** Os dois tipos de casa de recuo. */
+    // Os dois tipos de casa de recuo.
     public enum Kind {
         FIREWALL("Firewall"),
         HONEYPOT("Honeypot");
@@ -44,13 +42,25 @@ public class ReturnCell extends Cell implements Effect {
     public int getDestination() { return destination; }
 
     @Override
-    public int redirect() { return destination; }
+    public int redirect() {
+        // A firewall não move o peão: fica à espera da resposta no Game.
+        if (kind == Kind.FIREWALL) {
+            return getNumber();
+        }
+        // Honeypots recuam para o destino definido.
+        return destination;
+    }
 
     @Override
     public boolean hasEffect() { return true; }
 
     @Override
     public String describeEffect() {
+        // A firewall é um ponto de verificação, não um recuo para outra casa.
+        if (kind == Kind.FIREWALL) {
+            return "Firewall! " + getNumber() + ": responde para passar";
+        }
+        // O honeypot continua a mostrar origem e destino.
         return kind.getLabel() + "! " + getNumber() + " -> " + destination;
     }
 
