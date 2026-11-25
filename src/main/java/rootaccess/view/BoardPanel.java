@@ -3,7 +3,9 @@
 //            de percurso, efeito e chegada.
 // Aluno: C - Cleiton Muangala (30016337)
 // Revisor: [a preencher]
-// Uso de IA: Sim - ver AI_USE.md
+// Uso de IA: Sim - Claude Code: correção da animação depois da resposta à firewall,
+//            peão retido durante a revelação do dado, legenda e avatares sem sobreposição
+//            (ver AI_USE.md, secção 3)
 package rootaccess.view;
 
 import rootaccess.model.AdvanceCell;
@@ -85,12 +87,25 @@ public class BoardPanel extends JPanel {
         repaint();
     }
 
+    // O modelo já atualizou a posição; enquanto o dado é revelado, o avatar
+    // continua desenhado na casa de partida para não antecipar o resultado.
+    public void holdAtStart(TurnEvent event) {
+        stopAnimation();
+        movingPlayer = event.getPlayer();
+        animatedPosition = startPosition(event);
+        repaint();
+    }
+
     public void animateTurn(TurnEvent event, Runnable onStep, Runnable onEffect, Runnable onFinished) {
         // Cancela qualquer animação antiga antes de começar esta.
         stopAnimation();
         movingPlayer = event.getPlayer();
-        animatedPosition = event.getFrom();
-        movementPath = createMovementPath(event);
+        animatedPosition = startPosition(event);
+        // A resposta à firewall não volta a percorrer o lançamento: o avatar
+        // já está na firewall e só falta mostrar o avanço de 1 casa (ou nada).
+        movementPath = isFirewallAnswer(event)
+                ? Collections.<Integer>emptyList()
+                : createMovementPath(event);
         movementIndex = 0;
         arrivalFrame = 0;
         highlightedCell = -1;
@@ -170,6 +185,16 @@ public class BoardPanel extends JPanel {
         });
         arrivalTimer.start();
         repaint();
+    }
+
+    // Evento emitido por answerFirewall/giveUpFirewall (tem resultado da resposta).
+    private static boolean isFirewallAnswer(TurnEvent event) {
+        return event.getFirewallCorrect() != null;
+    }
+
+    // Casa onde a animação começa: a firewall, numa resposta; a partida, num lançamento.
+    private static int startPosition(TurnEvent event) {
+        return isFirewallAnswer(event) ? event.getLanded() : event.getFrom();
     }
 
     private List<Integer> createMovementPath(TurnEvent event) {
@@ -443,9 +468,10 @@ public class BoardPanel extends JPanel {
             scale = 1.0 + wave * 0.35;
         }
 
-        // Grelha 2x2 para até quatro avatares sem se sobreporem.
-        int offsetX = rect.x + rect.width - 44 + (index % 2) * 20;
-        int offsetY = rect.y + 8 + (index / 2) * 20 - lift;
+        // Grelha 2x2 centrada na casa, para até quatro avatares sem se sobreporem
+        // nem taparem o número (em cima) ou o ícone do efeito (em baixo).
+        int offsetX = rect.x + (rect.width - 38) / 2 + (index % 2) * 20;
+        int offsetY = rect.y + (rect.height - 38) / 2 + (index / 2) * 20 - lift;
         int badge = (int) Math.round(18 * scale);
 
         // Sombra no chão, que fica para trás quando o avatar salta.
@@ -482,18 +508,18 @@ public class BoardPanel extends JPanel {
     private void drawLegend(Graphics2D g2) {
         int y = getHeight() - 28;
         g2.setFont(new Font("Monospaced", Font.PLAIN, 12));
-
-        g2.setColor(COLOR_ADVANCE);
-        g2.drawString("▲ Brecha / exploit (avança)", 130, y);
-
-        g2.setColor(COLOR_FIREWALL);
-        g2.drawString("🔥 Firewall (pergunta)", 350, y);
-
-        g2.setColor(COLOR_HONEYPOT);
-        g2.drawString("▼ Honeypot (recua)", 505, y);
-
-        g2.setColor(COLOR_ROOT);
-        g2.drawString("⚑ Root (casa 50)", 665, y);
+        FontMetrics metrics = g2.getFontMetrics();
+        // Cada entrada começa depois da anterior, medida pela largura real do texto
+        // (com posições fixas, "Firewall" e "Honeypot" sobrepunham-se).
+        String[] labels = {"▲ Brecha / exploit (avança)", "🔥 Firewall (pergunta)",
+                "▼ Honeypot (recua)", "⚑ Root (casa 50)"};
+        Color[] colors = {COLOR_ADVANCE, COLOR_FIREWALL, COLOR_HONEYPOT, COLOR_ROOT};
+        int x = 130;
+        for (int i = 0; i < labels.length; i++) {
+            g2.setColor(colors[i]);
+            g2.drawString(labels[i], x, y);
+            x += metrics.stringWidth(labels[i]) + 28;
+        }
     }
 
     private Rectangle getCellBounds(int cellNumber) {

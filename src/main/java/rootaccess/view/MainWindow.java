@@ -1,9 +1,10 @@
 // Módulo: rootaccess.view.MainWindow
-// Propósito: janela principal, configuração inicial com nomes e avatares,
-//            ligação ao modelo e apresentação do fim do jogo.
+// Propósito: janela principal, configuração inicial (jogadores, avatares e
+//            modo do dado), ligação ao modelo e apresentação do fim do jogo.
 // Aluno: C - Cleiton Muangala (30016337)
 // Revisor: [a preencher]
-// Uso de IA: Sim - ver AI_USE.md
+// Uso de IA: Sim - Claude Code: escolha do modo do dado, sequência dado -> movimento,
+//            resposta à firewall enviada ao modelo (ver AI_USE.md, secção 3)
 package rootaccess.view;
 
 import rootaccess.model.Avatar;
@@ -15,6 +16,7 @@ import rootaccess.model.GameObserver;
 import rootaccess.model.GameResult;
 import rootaccess.model.ManualDice;
 import rootaccess.model.Player;
+import rootaccess.model.RandomDice;
 import rootaccess.model.TurnEvent;
 
 import javax.swing.ButtonGroup;
@@ -39,6 +41,7 @@ import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -60,11 +63,12 @@ public class MainWindow extends JFrame implements GameObserver {
         setLayout(new BorderLayout(12, 12));
         ((JPanel) getContentPane()).setBorder(new EmptyBorder(12, 12, 12, 12));
 
-        // Dado manual interior: o valor vem sempre do dado clicável da GUI.
-        this.game = new Game(new ManualDice());
+        // Jogo vazio até a configuração ser confirmada.
+        this.game = new Game(new RandomDice());
         this.boardPanel = new BoardPanel(game);
         this.logPanel = new LogPanel();
-        this.controlPanel = new ControlPanel(game, this);
+        // O painel de controlo só conhece o registo e a ação de reinício.
+        this.controlPanel = new ControlPanel(game, logPanel, () -> promptNewGameConfiguration());
 
         // Coluna direita: estado, dado e registo.
         JPanel rightColumn = new JPanel(new BorderLayout(0, 8));
@@ -102,15 +106,14 @@ public class MainWindow extends JFrame implements GameObserver {
                 new JTextField("Jogador 3", 12),
                 new JTextField("Jogador 4", 12)
         };
-        // Array de combos; o Swing não permite criar arrays genéricos com tipo concreto.
-        @SuppressWarnings("unchecked")
-        JComboBox<Avatar>[] avatarCombos = new JComboBox[4];
+        // Lista genérica de combos: evita o array de tipo genérico (raw type).
+        List<JComboBox<Avatar>> avatarCombos = new ArrayList<>();
         JLabel[] previews = new JLabel[4];
 
         // Cada jogador arranca com um avatar diferente do catálogo.
         for (int i = 0; i < 4; i++) {
-            avatarCombos[i] = new JComboBox<>(Avatar.values());
-            avatarCombos[i].setSelectedItem(Avatar.at(i));
+            avatarCombos.add(new JComboBox<>(Avatar.values()));
+            avatarCombos.get(i).setSelectedItem(Avatar.at(i));
             previews[i] = new JLabel();
             previews[i].setFont(new Font("SansSerif", Font.PLAIN, 24));
             previews[i].setHorizontalAlignment(JLabel.CENTER);
@@ -123,9 +126,9 @@ public class MainWindow extends JFrame implements GameObserver {
         // Atualiza a pré-visualização assim que o avatar muda.
         for (int i = 0; i < 4; i++) {
             final int index = i;
-            avatarCombos[i].addActionListener(event -> refreshAvatarPreview(
-                    previews[index], avatarCombos[index], index));
-            refreshAvatarPreview(previews[i], avatarCombos[i], i);
+            avatarCombos.get(i).addActionListener(event -> refreshAvatarPreview(
+                    previews[index], avatarCombos.get(index), index));
+            refreshAvatarPreview(previews[i], avatarCombos.get(i), i);
         }
 
         // Cabeçalho da grelha de jogadores.
@@ -137,7 +140,9 @@ public class MainWindow extends JFrame implements GameObserver {
         configPanel.add(countCombo, gbc);
         gbc.gridwidth = 1;
 
+        // gridx volta a 0: sem isto "Jogador" e "Nome" ficavam na mesma célula.
         gbc.gridy = 1;
+        gbc.gridx = 0;
         configPanel.add(headerLabel("Jogador"), gbc);
         gbc.gridx = 1;
         configPanel.add(headerLabel("Nome"), gbc);
@@ -154,7 +159,7 @@ public class MainWindow extends JFrame implements GameObserver {
             gbc.gridx = 1;
             configPanel.add(nameFields[i], gbc);
             gbc.gridx = 2;
-            configPanel.add(avatarCombos[i], gbc);
+            configPanel.add(avatarCombos.get(i), gbc);
             gbc.gridx = 3;
             configPanel.add(previews[i], gbc);
         }
@@ -167,6 +172,23 @@ public class MainWindow extends JFrame implements GameObserver {
         note.setFont(new Font("SansSerif", Font.PLAIN, 11));
         note.setForeground(new Color(120, 145, 160));
         configPanel.add(note, gbc);
+        gbc.gridwidth = 1;
+
+        // Modo do dado, escolhido no início e válido para toda a partida.
+        JRadioButton randomMode = new JRadioButton("Aleatório (o jogo sorteia 1-6)", true);
+        JRadioButton manualMode = new JRadioButton("Manual (o jogador escreve 1-6)");
+        ButtonGroup diceModes = new ButtonGroup();
+        diceModes.add(randomMode);
+        diceModes.add(manualMode);
+        JPanel diceModeRow = new JPanel(new GridLayout(1, 2, 8, 0));
+        diceModeRow.add(randomMode);
+        diceModeRow.add(manualMode);
+        gbc.gridy = 7;
+        gbc.gridx = 0;
+        configPanel.add(headerLabel("Modo do dado"), gbc);
+        gbc.gridx = 1;
+        gbc.gridwidth = 3;
+        configPanel.add(diceModeRow, gbc);
         gbc.gridwidth = 1;
 
         // Os campos dos jogadores inativos começam desligados.
@@ -198,7 +220,7 @@ public class MainWindow extends JFrame implements GameObserver {
             for (int i = 0; i < playerCount; i++) {
                 String rawName = nameFields[i].getText().trim();
                 names.add(rawName.isEmpty() ? "Jogador " + (i + 1) : rawName);
-                Avatar avatar = (Avatar) avatarCombos[i].getSelectedItem();
+                Avatar avatar = (Avatar) avatarCombos.get(i).getSelectedItem();
                 avatars.add(avatar);
                 if (!used.add(avatar)) {
                     duplicate = i + 1;
@@ -217,8 +239,8 @@ public class MainWindow extends JFrame implements GameObserver {
                 continue;
             }
 
-            // O dado do jogo é alimentado pelo DicePanel, nunca por aleatoriedade oculta.
-            Dice selectedDice = new ManualDice();
+            // Os dois modos usam a mesma lógica de turno; só muda o Dice do modelo.
+            Dice selectedDice = manualMode.isSelected() ? new ManualDice() : new RandomDice();
             this.game = new Game(selectedDice);
             this.game.addObserver(this);
             this.game.start(names, avatars);
@@ -228,7 +250,10 @@ public class MainWindow extends JFrame implements GameObserver {
             boardPanel.setGame(game);
             controlPanel.setGame(game);
             logPanel.clear();
-            logPanel.append("Jogo iniciado. Clica no dado para lançar.");
+            logPanel.append("Jogo iniciado no modo de dado " + selectedDice.getModeName() + ". "
+                    + (manualMode.isSelected()
+                    ? "Escreve um valor de 1 a 6 e carrega em Lançar."
+                    : "Clica no dado ou no botão para lançar."));
             // Lista os avatares escolhidos para o registo inicial ficar completo.
             String roster = IntStream.range(0, names.size())
                     .mapToObj(i -> avatars.get(i).getGlyph() + " " + names.get(i))
@@ -241,7 +266,7 @@ public class MainWindow extends JFrame implements GameObserver {
 
     private void updatePlayerRows(JComboBox<Integer> countCombo,
                                   JTextField[] nameFields,
-                                  JComboBox<Avatar>[] avatarCombos,
+                                  List<JComboBox<Avatar>> avatarCombos,
                                   JLabel[] previews) {
         // Os quatro arrays têm sempre o mesmo tamanho.
         int count = (Integer) countCombo.getSelectedItem();
@@ -249,7 +274,7 @@ public class MainWindow extends JFrame implements GameObserver {
             // Só as linhas dos jogadores ativos aceitam edição.
             boolean active = i < count;
             nameFields[i].setEnabled(active);
-            avatarCombos[i].setEnabled(active);
+            avatarCombos.get(i).setEnabled(active);
             previews[i].setEnabled(active);
         }
     }
@@ -292,16 +317,30 @@ public class MainWindow extends JFrame implements GameObserver {
         if (event == null) {
             return;
         }
+        // A animação bloqueia o dado até o avatar parar.
+        controlPanel.setAnimating(true, event);
+        if (event.getFirewallCorrect() == null) {
+            // Lançamento novo: o modelo já moveu o peão, mas a vista mostra
+            // primeiro a face do dado e só depois o percurso.
+            boardPanel.holdAtStart(event);
+            controlPanel.showRoll(event, () -> presentTurn(event));
+        } else {
+            // Resposta à firewall: não há dado novo para mostrar.
+            presentTurn(event);
+        }
+    }
+
+    // Escreve o turno no registo e anima o avatar; no fim, pergunta a firewall
+    // (se houver) ou liberta os controlos.
+    private void presentTurn(TurnEvent event) {
         // O modelo já produziu a mensagem completa do turno.
-        if (event.getMessage() != null && !event.getMessage().isEmpty()) {
+        if (!event.getMessage().isEmpty()) {
             logPanel.append(event.getMessage());
         }
         // Resposta errada leva um som grave; a certa é tratada como efeito.
         if (Boolean.FALSE.equals(event.getFirewallCorrect())) {
             SoundEffects.playDenied();
         }
-        // A animação bloqueia o dado até o avatar parar.
-        controlPanel.setAnimating(true, event);
         // Ao passar a firewall com sucesso, o som é de passagem, não de efeito normal.
         Runnable effectSound = event.getFirewallCorrect() != null
                 ? SoundEffects::playFirewallPass
@@ -309,10 +348,16 @@ public class MainWindow extends JFrame implements GameObserver {
         boardPanel.animateTurn(event, SoundEffects::playStep, effectSound, () -> {
             // Primeiro evento: o avatar chegou à firewall e falta responder.
             if (event.isAwaitingFirewall()) {
+                controlPanel.refreshPositions();
                 // O diálogo é modal; os controlos continuam bloqueados.
-                boolean correct = askFirewall(event.getQuestion());
+                OptionalInt choice = askFirewall(event.getQuestion());
+                // O modelo decide se a resposta está certa; a vista só envia a escolha.
                 // A resposta gera um novo TurnEvent, que relança a animação.
-                game.answerFirewall(correct);
+                if (choice.isPresent()) {
+                    game.answerFirewall(choice.getAsInt());
+                } else {
+                    game.giveUpFirewall();
+                }
                 return;
             }
             // Evento final: liberta os controlos e mostra o fim, se existir.
@@ -325,7 +370,9 @@ public class MainWindow extends JFrame implements GameObserver {
         });
     }
 
-    private boolean askFirewall(FirewallQuestion question) {
+    // Mostra a pergunta e devolve o índice escolhido (0 = A), ou vazio se o
+    // jogador desistir. A correção da resposta é feita pelo Game.
+    private OptionalInt askFirewall(FirewallQuestion question) {
         // O enunciado vem do banco e é escapado para o HTML do JLabel.
         JLabel prompt = new JLabel("<html><body style='width:360px'>"
                 + escapeHtml(question.getPrompt()) + "</body></html>");
@@ -343,7 +390,7 @@ public class MainWindow extends JFrame implements GameObserver {
         }
 
         // Recorda a regra sem revelar a resposta.
-        JLabel hint = new JLabel("Acertar: avança 1 casa. Errar: ficas na firewall.");
+        JLabel hint = new JLabel("Acertar: avança 1 casa. Errar ou desistir: ficas na firewall.");
         hint.setFont(new Font("SansSerif", Font.ITALIC, 11));
         hint.setForeground(new Color(120, 145, 160));
 
@@ -356,23 +403,28 @@ public class MainWindow extends JFrame implements GameObserver {
         // Nome da casa para o título (ex.: "Firewall perimetral").
         String cellName = game.getBoard().getCell(question.getFirewallCell()).getName();
         String title = "Firewall — " + question.getFirewallCell() + " " + cellName;
+        // Botões explícitos: a desistência é uma escolha visível, não um efeito escondido.
+        Object[] actions = {"Responder", "Desistir (conta como errada)"};
 
         while (true) {
-            int choice = JOptionPane.showConfirmDialog(
+            int choice = JOptionPane.showOptionDialog(
                     this,
                     panel,
                     title,
-                    JOptionPane.OK_CANCEL_OPTION,
-                    JOptionPane.WARNING_MESSAGE
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.WARNING_MESSAGE,
+                    null,
+                    actions,
+                    actions[0]
             );
-            // Fechar ou cancelar conta como resposta errada.
-            if (choice != JOptionPane.OK_OPTION) {
-                return false;
+            // Desistir ou fechar a janela conta como resposta errada (regra do grupo).
+            if (choice != 0) {
+                return OptionalInt.empty();
             }
-            // Procura a opção marcada; sem escolha, insiste.
+            // Procura a opção marcada; sem escolha, insiste sem mudar o jogo.
             for (int i = 0; i < buttons.length; i++) {
                 if (buttons[i].isSelected()) {
-                    return i == question.getCorrectIndex();
+                    return OptionalInt.of(i);
                 }
             }
             JOptionPane.showMessageDialog(
@@ -397,7 +449,7 @@ public class MainWindow extends JFrame implements GameObserver {
 
     private void showGameOver(GameResult result) {
         // Atualiza os painéis antes de abrir a mensagem final.
-        controlPanel.refreshState(null);
+        controlPanel.refreshState();
         boardPanel.repaint();
 
         // Sem resultado não há mensagem para mostrar.

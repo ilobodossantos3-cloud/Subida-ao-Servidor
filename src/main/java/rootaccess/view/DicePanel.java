@@ -1,9 +1,11 @@
 // Módulo: rootaccess.view.DicePanel
-// Propósito: dado único e interativo. Só roda depois de um clique e mostra
-//            claramente a face sorteada antes de o turno avançar.
+// Propósito: dado único e interativo. O clique só pede um lançamento; o valor
+//            vem sempre do modelo (RandomDice ou ManualDice) e o painel apenas
+//            anima o cubo até mostrar essa face.
 // Aluno: C - Cleiton Muangala (30016337)
 // Revisor: [a preencher]
-// Uso de IA: Sim - ver AI_USE.md
+// Uso de IA: Sim - Claude Code: o valor passa a vir do modelo (showResult) e o
+//            clique só pede o lançamento (ver AI_USE.md, secção 3)
 package rootaccess.view;
 
 import javax.swing.JPanel;
@@ -25,7 +27,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.IntConsumer;
 
 public class DicePanel extends JPanel {
 
@@ -44,8 +45,14 @@ public class DicePanel extends JPanel {
     private static final Color TEXT_GREEN = new Color(0, 230, 140);
     private static final Color TEXT_CYAN = new Color(90, 200, 220);
 
-    // Recebe a face final; o painel de controlo transforma-a num turno.
-    private final IntConsumer onRolled;
+    // Avisa o painel de controlo de que o jogador pediu um lançamento.
+    private final Runnable onRollRequested;
+    // Código a correr depois de a face do modelo ficar visível.
+    private Runnable onShown;
+    // Face que o modelo sorteou; o giro termina sempre nela.
+    private int targetFace;
+    // Texto mostrado antes do primeiro lançamento (depende do modo do dado).
+    private String idleCaption = "CLICA NO DADO";
     // Timer que troca as faces durante o giro.
     private final Timer spinTimer;
     // Timer curto que segura a face final antes de avisar o controlo.
@@ -55,17 +62,19 @@ public class DicePanel extends JPanel {
     private int face;
     // Contador de ticks do giro, usado também na inclinação visual.
     private int spinTick;
-    // Evita dois cliques seguidos enquanto o dado roda.
+    // Verdadeiro só enquanto as faces trocam (inclina o cubo e mostra "A RODAR...").
     private boolean spinning;
+    // Verdadeiro desde o pedido até ao fim da pausa de leitura: bloqueia cliques.
+    private boolean busy;
     // A GUI desliga o dado durante animações e no fim do jogo.
     private boolean interactionEnabled = true;
 
-    public DicePanel(IntConsumer onRolled) {
-        // O painel não está completo sem quem trate do resultado.
-        if (onRolled == null) {
-            throw new IllegalArgumentException("O dado precisa de um recetor para o resultado");
+    public DicePanel(Runnable onRollRequested) {
+        // O painel não está completo sem quem trate do pedido de lançamento.
+        if (onRollRequested == null) {
+            throw new IllegalArgumentException("O dado precisa de um recetor para o pedido");
         }
-        this.onRolled = onRolled;
+        this.onRollRequested = onRollRequested;
         // O fundo do cartão é desenhado pelo painel pai.
         setOpaque(false);
         // Espaço suficiente para o cubo, o brilho e a legenda.
@@ -79,7 +88,7 @@ public class DicePanel extends JPanel {
         // Nome acessível para leitores de ecrã.
         getAccessibleContext().setAccessibleName("Dado de seis faces");
 
-        // Só mousePressed inicia o giro: não existe reação a hover.
+        // Só mousePressed pede o lançamento: não existe reação a hover.
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
@@ -87,8 +96,8 @@ public class DicePanel extends JPanel {
                 if (SwingUtilities.isLeftMouseButton(event)) {
                     // Dar foco torna o teclado imediatamente utilizável.
                     requestFocusInWindow();
-                    // O clique é o único gatilho do giro.
-                    startSpin();
+                    // O clique é o único gatilho do lançamento.
+                    requestRoll();
                 }
             }
         });
@@ -101,7 +110,7 @@ public class DicePanel extends JPanel {
                 if (event.getKeyCode() == KeyEvent.VK_SPACE
                         || event.getKeyCode() == KeyEvent.VK_ENTER) {
                     // Reutiliza o mesmo caminho do clique.
-                    startSpin();
+                    requestRoll();
                 }
             }
         });
@@ -129,63 +138,100 @@ public class DicePanel extends JPanel {
         // Para qualquer animação que tenha ficado a meio.
         spinTimer.stop();
         revealTimer.stop();
-        // Limpa face e contadores para o próximo jogo.
+        // Limpa face, contadores e callback pendente para o próximo jogo.
         spinning = false;
+        busy = false;
         spinTick = 0;
         face = 0;
+        targetFace = 0;
+        onShown = null;
         // Mostra novamente o estado "clica no dado".
         repaint();
     }
 
-    // Inicia o giro apenas quando o painel está disponível.
-    private void startSpin() {
+    // Texto do estado inicial: "CLICA NO DADO" (aleatório) ou "ESCREVE 1-6" (manual).
+    public void setIdleCaption(String caption) {
+        this.idleCaption = caption == null ? "" : caption;
+        repaint();
+    }
+
+    // Clique, Espaço ou Enter: pede um lançamento se o dado estiver disponível.
+    private void requestRoll() {
         // Ignora cliques repetidos, teclas durante o giro e estados bloqueados.
-        if (!interactionEnabled || spinning) {
+        if (!interactionEnabled || busy) {
             return;
         }
-        // Marca o início antes de arrancar o timer.
-        spinning = true;
+        onRollRequested.run();
+    }
+
+    // Mostra a face decidida pelo modelo. Com spin = true o cubo roda antes de
+    // parar nessa face; sem spin a face aparece logo (valor escrito à mão).
+    // Depois da pausa de leitura corre onShown (normalmente, mover o avatar).
+    public void showResult(int value, boolean spin, Runnable onShown) {
+        if (value < 1 || value > 6) {
+            throw new IllegalArgumentException("Face inválida: " + value);
+        }
+        // Um pedido novo substitui qualquer animação que tenha ficado a meio.
+        spinTimer.stop();
+        revealTimer.stop();
+        this.targetFace = value;
+        this.onShown = onShown;
+        busy = true;
+        spinning = spin;
         spinTick = 0;
-        // A primeira face falsa evita um "salto" visual no primeiro tick.
-        face = randomFace(face);
-        // Som curto confirma que o clique foi aceite.
-        SoundEffects.playClick();
-        // Começa a sequência de faces.
-        spinTimer.start();
+        if (spin) {
+            // A primeira face falsa evita um "salto" visual no primeiro tick.
+            face = randomFace(face);
+            // Som curto confirma que o lançamento começou.
+            SoundEffects.playClick();
+            // Começa a sequência de faces.
+            spinTimer.start();
+        } else {
+            // Valor manual: não há sorteio para encenar, só a pausa de leitura.
+            face = targetFace;
+            revealTimer.restart();
+        }
         // Redesenha já para mostrar a primeira face.
         repaint();
     }
 
-    // Cada tick troca a face, inclusive a última antes da pausa.
+    // Cada tick troca a face; o último tick fixa a face do modelo.
     private void onSpinTick() {
         // Avança o contador que controla a inclinação.
         spinTick++;
-        // Uma face diferente da anterior dá a sensação de rotação.
-        face = randomFace(face);
-        // Atualiza o cubo no ecrã.
-        repaint();
-        // Ao atingir o número de ticks, termina o giro.
+        // Ao atingir o número de ticks, termina o giro na face verdadeira.
         if (spinTick >= SPIN_TICKS) {
-            // O giro termina no tick atual; a face já está escolhida.
+            face = targetFace;
+            spinning = false;
             spinTimer.stop();
             // A face final fica visível durante a pausa.
             revealTimer.restart();
+        } else {
+            // Faces intermédias apenas visuais: não decidem o resultado.
+            face = randomFace(face);
         }
+        // Atualiza o cubo no ecrã.
+        repaint();
     }
 
-    // Fecha o lançamento e entrega a face ao controlador do turno.
+    // Fecha o lançamento e devolve o controlo a quem pediu a animação.
     private void finishReveal() {
-        // O dado deixa de estar em movimento.
+        // O dado deixa de estar ocupado.
         spinning = false;
+        busy = false;
         // Som de chegada da face, distinto do clique.
         SoundEffects.playDiceReveal();
         // O número fica parado no ecrã.
         repaint();
-        // Só depois da pausa o turno avança, para todos verem o resultado.
-        onRolled.accept(face);
+        // Só depois da pausa o turno é desenhado, para todos verem o resultado.
+        Runnable next = onShown;
+        onShown = null;
+        if (next != null) {
+            next.run();
+        }
     }
 
-    // Sorteia uma face diferente da anterior, para o giro nunca parecer parado.
+    // Face falsa do giro (só visual), diferente da anterior para parecer rotação.
     private int randomFace(int previous) {
         // O intervalo é inclusivo em ambos os extremos.
         int next = ThreadLocalRandom.current().nextInt(1, 7);
@@ -347,8 +393,8 @@ public class DicePanel extends JPanel {
             caption = "A RODAR...";
             g2.setColor(TEXT_CYAN);
         } else if (face == 0) {
-            // Antes do primeiro clique, o convite ao gesto.
-            caption = "CLICA NO DADO";
+            // Antes do primeiro lançamento, o convite ao gesto do modo atual.
+            caption = idleCaption;
             g2.setColor(TEXT_CYAN);
         } else {
             // Resultado explícito, além dos pips.

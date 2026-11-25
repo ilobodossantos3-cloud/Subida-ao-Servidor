@@ -2,7 +2,8 @@
 // Propósito: coordena jogadores, lançamentos, movimento, efeitos e fim do jogo.
 // Aluno: B - Pedro Moroni (30016458)
 // Revisor: [a preencher]
-// Uso de IA: Sim - ver AI_USE.md
+// Uso de IA: Sim - Claude Code: resposta à firewall avaliada no modelo (answerFirewall(int),
+//            giveUpFirewall) e modo do dado nas mensagens (ver AI_USE.md, secção 3)
 package rootaccess.model;
 
 import java.util.ArrayList;
@@ -23,7 +24,7 @@ public class Game {
     private final Board board;
     private final List<GameObserver> observers = new ArrayList<>();
     private final List<Player> players = new ArrayList<>();
-    private Dice dice;
+    private final Dice dice;
     private int currentPlayerIndex;
     private int round;
     private GameResult result;
@@ -178,7 +179,8 @@ public class Game {
         pendingLanded = landed;
         // Mensagem curta; o diálogo mostra o enunciado completo.
         String message = player.getAvatar().getGlyph() + " " + player.getName()
-                + " lançou " + roll + ": casa " + from + " -> " + landed
+                + " lançou " + roll + " (dado " + dice.getModeName() + "): casa "
+                + from + " -> " + landed
                 + ". Firewall! Responde à pergunta para passar.";
         TurnEvent event = new TurnEvent(player, roll, from, raw, landed, landed,
                 message, pendingQuestion, null);
@@ -187,11 +189,37 @@ public class Game {
         return event;
     }
 
-    public TurnEvent answerFirewall(boolean correct) {
+    // Responde à pergunta pendente com o índice da opção escolhida (0 = A).
+    // A correção é decidida aqui, no modelo; a GUI só envia a escolha.
+    public TurnEvent answerFirewall(int optionIndex) {
+        FirewallQuestion question = requirePendingQuestion();
+        // Uma opção inexistente é entrada inválida: o estado fica igual e a
+        // pergunta continua pendente.
+        if (optionIndex < 0 || optionIndex >= question.getOptions().size()) {
+            throw new IllegalArgumentException("Opção inexistente: " + optionIndex);
+        }
+        boolean correct = optionIndex == question.getCorrectIndex();
+        String verdict = correct ? "✅ Resposta certa. " : "❌ Resposta errada. ";
+        return resolveFirewall(correct, verdict);
+    }
+
+    // O jogador desistiu da pergunta (botão "Desistir" ou fecho do diálogo).
+    // A regra do grupo trata a desistência como resposta errada.
+    public TurnEvent giveUpFirewall() {
+        requirePendingQuestion();
+        return resolveFirewall(false, "❌ Sem resposta (desistiu). ");
+    }
+
+    private FirewallQuestion requirePendingQuestion() {
         // Não há resposta sem pergunta pendente.
         if (pendingQuestion == null) {
             throw new IllegalStateException("Não há pergunta de firewall pendente");
         }
+        return pendingQuestion;
+    }
+
+    // Aplica a regra da firewall: certa avança 1 casa, errada fica; a vez passa.
+    private TurnEvent resolveFirewall(boolean correct, String verdict) {
         // Guarda a pergunta para a mensagem antes de limpar o estado pendente.
         FirewallQuestion question = pendingQuestion;
         Player player = players.get(currentPlayerIndex);
@@ -202,7 +230,7 @@ public class Game {
         player.moveTo(finalPos);
 
         // A explicação da pergunta fica no registo, seja certa ou errada.
-        String message = (correct ? "✅ Resposta certa. " : "❌ Resposta errada. ")
+        String message = verdict
                 + question.getExplanation()
                 + (correct
                 ? " Passa da casa " + landed + " para a casa " + finalPos + "."
@@ -260,6 +288,7 @@ public class Game {
         StringBuilder message = new StringBuilder()
                 .append(player.getAvatar().getGlyph()).append(' ')
                 .append(player.getName()).append(" lançou ").append(roll)
+                .append(" (dado ").append(dice.getModeName()).append(")")
                 .append(": casa ").append(from).append(" -> ").append(landed).append('.');
         if (raw > Board.SIZE) {
             // Explica o ressalto para o jogador não achar que perdeu casas.

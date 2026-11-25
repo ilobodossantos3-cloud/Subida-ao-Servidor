@@ -2,13 +2,15 @@
 // Propósito: testes de turnos, validação do dado, ressalto e fim do jogo.
 // Aluno: B - Pedro Moroni (30016458)
 // Revisor: [a preencher]
-// Uso de IA: Sim - ver AI_USE.md
+// Uso de IA: Sim - Claude Code: adaptação a answerFirewall(int) e testes da resposta
+//            no modelo e da firewall 35 (ver AI_USE.md, secção 3)
 package rootaccess;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import rootaccess.model.*;
 
@@ -134,7 +136,7 @@ class GameTest {
         assertThrows(IllegalStateException.class, game::playTurn);
 
         // A resposta certa liberta a passagem para a casa seguinte.
-        TurnEvent resolved = game.answerFirewall(true);
+        TurnEvent resolved = game.answerFirewall(correctOption(game));
         assertEquals(12, ana.getPosition());
         assertFalse(resolved.isAwaitingFirewall());
         assertEquals(Boolean.TRUE, resolved.getFirewallCorrect());
@@ -154,7 +156,7 @@ class GameTest {
 
         // A pergunta abre na casa 11.
         game.playTurn();
-        TurnEvent resolved = game.answerFirewall(false);
+        TurnEvent resolved = game.answerFirewall(wrongOption(game));
 
         // O peão fica retido e o turno passa na mesma.
         assertEquals(11, ana.getPosition());
@@ -214,7 +216,7 @@ class GameTest {
         TurnEvent waiting = game.playTurn();
         assertTrue(waiting.isAwaitingFirewall());
         // A resposta errada mantém o segundo jogador na casa 11.
-        game.answerFirewall(false);
+        game.answerFirewall(wrongOption(game));
 
         // O limite de rondas produz empate entre os dois líderes.
         assertEquals(Game.MAX_ROUNDS, game.getRound());
@@ -236,12 +238,94 @@ class GameTest {
 
         // O segundo jogador fica na firewall 11, à frente da Ana.
         game.playTurn();
-        game.answerFirewall(false);
+        game.answerFirewall(wrongOption(game));
 
         // Um único líder produz ROUND_LIMIT, não DRAW.
         assertTrue(game.getResult().isRoundLimit());
         assertFalse(game.getResult().isDraw());
         assertSame(second, game.getResult().getWinners().get(0));
+    }
+
+    @Test
+    @DisplayName("Estado: Ana na casa 10, pergunta da firewall 11 aberta | Entrada: opções -1 e 4 "
+            + "| Esperado: IllegalArgumentException, pergunta continua aberta, Ana na 11 e com a vez")
+    void opcaoInexistenteNaFirewallNaoAlteraOEstado() throws Exception {
+        ManualDice dice = new ManualDice();
+        Game game = new Game(dice);
+        game.start(List.of("Ana", "Rui"));
+        Player ana = game.getCurrentPlayer();
+        ana.moveTo(10);
+        dice.setInput("1");
+        game.playTurn();
+
+        assertThrows(IllegalArgumentException.class, () -> game.answerFirewall(-1));
+        assertThrows(IllegalArgumentException.class, () -> game.answerFirewall(4));
+
+        assertTrue(game.isAwaitingFirewall());
+        assertEquals(11, ana.getPosition());
+        assertSame(ana, game.getCurrentPlayer());
+        assertEquals(1, game.getRound());
+    }
+
+    @Test
+    @DisplayName("Estado: pergunta da firewall 11 aberta | Entrada: desistir "
+            + "| Esperado: conta como errada, Ana fica na 11 e a vez passa ao Rui")
+    void desistirDaFirewallContaComoRespostaErrada() throws Exception {
+        ManualDice dice = new ManualDice();
+        Game game = new Game(dice);
+        game.start(List.of("Ana", "Rui"));
+        Player ana = game.getCurrentPlayer();
+        ana.moveTo(10);
+        dice.setInput("1");
+        game.playTurn();
+
+        TurnEvent resolved = game.giveUpFirewall();
+
+        assertEquals(11, ana.getPosition());
+        assertEquals(Boolean.FALSE, resolved.getFirewallCorrect());
+        assertFalse(game.isAwaitingFirewall());
+        assertEquals("Rui", game.getCurrentPlayer().getName());
+    }
+
+    @Test
+    @DisplayName("Estado: sem pergunta pendente | Entrada: responder ou desistir "
+            + "| Esperado: IllegalStateException")
+    void responderSemPerguntaPendenteERecusado() {
+        Game game = new Game(new ManualDice());
+        game.start(List.of("Ana", "Rui"));
+        assertThrows(IllegalStateException.class, () -> game.answerFirewall(0));
+        assertThrows(IllegalStateException.class, game::giveUpFirewall);
+    }
+
+    @Test
+    @DisplayName("Estado: Ana na casa 34 | Entrada: dado 1 e resposta certa na firewall 35 "
+            + "| Esperado: Ana fica na 36 (Kerberoasting não se aplica: sem encadeamento)")
+    void respostaCertaNaFirewall35NaoEncadeiaKerberoasting() throws Exception {
+        ManualDice dice = new ManualDice();
+        Game game = new Game(dice);
+        game.start(List.of("Ana", "Rui"));
+        Player ana = game.getCurrentPlayer();
+        ana.moveTo(34);
+        dice.setInput("1");
+        game.playTurn();
+
+        TurnEvent resolved = game.answerFirewall(correctOption(game));
+
+        // A casa 36 é de avanço (-> 46), mas o +1 da firewall não aplica efeitos.
+        assertTrue(game.getBoard().getCell(36).hasEffect());
+        assertEquals(36, resolved.getFinalPos());
+        assertEquals(36, ana.getPosition());
+    }
+
+    // Índice da opção certa da pergunta pendente.
+    private static int correctOption(Game game) {
+        return game.getPendingQuestion().getCorrectIndex();
+    }
+
+    // Um índice válido mas errado (a opção a seguir à certa).
+    private static int wrongOption(Game game) {
+        FirewallQuestion question = game.getPendingQuestion();
+        return (question.getCorrectIndex() + 1) % question.getOptions().size();
     }
 
     // Ajusta a ronda por reflexão para não simular 40 rondas completas.
