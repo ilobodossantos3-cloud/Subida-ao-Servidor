@@ -29,7 +29,10 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+<<<<<<< HEAD
 import javax.swing.border.LineBorder;
+=======
+>>>>>>> master
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -108,12 +111,16 @@ public class MainWindow extends JFrame implements GameObserver {
         };
         // Lista genérica de combos: evita o array de tipo genérico (raw type).
         List<JComboBox<Avatar>> avatarCombos = new ArrayList<>();
+<<<<<<< HEAD
         JLabel[] previews = new JLabel[4];
+=======
+>>>>>>> master
 
         // Cada jogador arranca com um avatar diferente do catálogo.
         for (int i = 0; i < 4; i++) {
             avatarCombos.add(new JComboBox<>(Avatar.values()));
             avatarCombos.get(i).setSelectedItem(Avatar.at(i));
+<<<<<<< HEAD
             previews[i] = new JLabel();
             previews[i].setFont(new Font("SansSerif", Font.PLAIN, 24));
             previews[i].setHorizontalAlignment(JLabel.CENTER);
@@ -129,6 +136,8 @@ public class MainWindow extends JFrame implements GameObserver {
             avatarCombos.get(i).addActionListener(event -> refreshAvatarPreview(
                     previews[index], avatarCombos.get(index), index));
             refreshAvatarPreview(previews[i], avatarCombos.get(i), i);
+=======
+>>>>>>> master
         }
 
         // Cabeçalho da grelha de jogadores.
@@ -136,7 +145,11 @@ public class MainWindow extends JFrame implements GameObserver {
         gbc.gridy = 0;
         configPanel.add(new JLabel("Número de jogadores (2-4):"), gbc);
         gbc.gridx = 1;
+<<<<<<< HEAD
         gbc.gridwidth = 3;
+=======
+        gbc.gridwidth = 2;
+>>>>>>> master
         configPanel.add(countCombo, gbc);
         gbc.gridwidth = 1;
 
@@ -148,10 +161,15 @@ public class MainWindow extends JFrame implements GameObserver {
         configPanel.add(headerLabel("Nome"), gbc);
         gbc.gridx = 2;
         configPanel.add(headerLabel("Avatar"), gbc);
+<<<<<<< HEAD
         gbc.gridx = 3;
         configPanel.add(headerLabel("Ativo"), gbc);
 
         // Uma linha por jogador: número, nome, combo e pré-visualização.
+=======
+
+        // Uma linha por jogador: número, nome e avatar.
+>>>>>>> master
         for (int i = 0; i < 4; i++) {
             gbc.gridy = i + 2;
             gbc.gridx = 0;
@@ -160,14 +178,21 @@ public class MainWindow extends JFrame implements GameObserver {
             configPanel.add(nameFields[i], gbc);
             gbc.gridx = 2;
             configPanel.add(avatarCombos.get(i), gbc);
+<<<<<<< HEAD
             gbc.gridx = 3;
             configPanel.add(previews[i], gbc);
+=======
+>>>>>>> master
         }
 
         // Nota que explica a exigência de avatares distintos.
         gbc.gridy = 6;
         gbc.gridx = 0;
+<<<<<<< HEAD
         gbc.gridwidth = 4;
+=======
+        gbc.gridwidth = 3;
+>>>>>>> master
         JLabel note = new JLabel("Cada jogador escolhe um avatar diferente dos restantes.");
         note.setFont(new Font("SansSerif", Font.PLAIN, 11));
         note.setForeground(new Color(120, 145, 160));
@@ -187,14 +212,24 @@ public class MainWindow extends JFrame implements GameObserver {
         gbc.gridx = 0;
         configPanel.add(headerLabel("Modo do dado"), gbc);
         gbc.gridx = 1;
+<<<<<<< HEAD
         gbc.gridwidth = 3;
+=======
+        gbc.gridwidth = 2;
+>>>>>>> master
         configPanel.add(diceModeRow, gbc);
         gbc.gridwidth = 1;
 
         // Os campos dos jogadores inativos começam desligados.
+<<<<<<< HEAD
         updatePlayerRows(countCombo, nameFields, avatarCombos, previews);
         countCombo.addActionListener(event ->
                 updatePlayerRows(countCombo, nameFields, avatarCombos, previews));
+=======
+        updatePlayerRows(countCombo, nameFields, avatarCombos);
+        countCombo.addActionListener(event ->
+                updatePlayerRows(countCombo, nameFields, avatarCombos));
+>>>>>>> master
 
         // Repete o diálogo se houver avatares repetidos.
         while (true) {
@@ -266,8 +301,12 @@ public class MainWindow extends JFrame implements GameObserver {
 
     private void updatePlayerRows(JComboBox<Integer> countCombo,
                                   JTextField[] nameFields,
+<<<<<<< HEAD
                                   List<JComboBox<Avatar>> avatarCombos,
                                   JLabel[] previews) {
+=======
+                                  List<JComboBox<Avatar>> avatarCombos) {
+>>>>>>> master
         // Os quatro arrays têm sempre o mesmo tamanho.
         int count = (Integer) countCombo.getSelectedItem();
         for (int i = 0; i < 4; i++) {
@@ -275,6 +314,7 @@ public class MainWindow extends JFrame implements GameObserver {
             boolean active = i < count;
             nameFields[i].setEnabled(active);
             avatarCombos.get(i).setEnabled(active);
+<<<<<<< HEAD
             previews[i].setEnabled(active);
         }
     }
@@ -292,6 +332,11 @@ public class MainWindow extends JFrame implements GameObserver {
         preview.setBorder(new LineBorder(playerAccent(index), 2, true));
     }
 
+=======
+        }
+    }
+
+>>>>>>> master
     private JLabel headerLabel(String text) {
         // Cabeçalhos discretos, alinhados com o tema.
         JLabel label = new JLabel(text);
@@ -300,6 +345,7 @@ public class MainWindow extends JFrame implements GameObserver {
         return label;
     }
 
+<<<<<<< HEAD
     private Color playerAccent(int index) {
         // Cores iguais às usadas no tabuleiro, por ordem de jogador.
         Color[] accents = {
@@ -311,6 +357,8 @@ public class MainWindow extends JFrame implements GameObserver {
         return accents[Math.floorMod(index, accents.length)];
     }
 
+=======
+>>>>>>> master
     @Override
     public void onTurn(TurnEvent event) {
         // Evento nulo não deve provocar uma exceção na animação.

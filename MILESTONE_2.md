@@ -51,11 +51,33 @@ As alterações de 24/11 (secção 2) foram feitas com apoio de IA (Claude Code)
 
 ## 5. Reflexão individual (escrita por cada aluno)
 
+<<<<<<< HEAD
 - **Igor Santos:** `[2–4 frases: uma dificuldade, uma decisão tomada e o que aprendeu]`
 - **Pedro Moroni:** `[2–4 frases]`
 - **Cleiton Muangala:** `[2–4 frases]`
 - **Gonçalo Veríssimo:** `[2–4 frases]`
 
+=======
+**Igor Santos** — Estrutura e entidades do modelo
+Dificuldade: adaptar o modelo do tabuleiro e das regras de efeito quando as firewalls deixaram de aplicar um recuo imediato para passarem a depender de uma pergunta e de validação em duas fases, garantindo ao mesmo tempo que o catálogo de avatares e as validações de casas continuassem consistentes para o resto do motor de jogo.
+
+Reflexão individual: este segundo marco mostrou-me a importância de manter as entidades do domínio limpas e bem delimitadas, mas também flexíveis o suficiente para absorver mudanças de regra sem quebrar o que já estava testado. Rever e ajustar as classes do modelo com a equipa ajudou a consolidar a base antes de avançar para a reta final.
+
+**Pedro Moroni** — Motor de jogo e controlo de turnos
+Dificuldade: coordenar o estado do turno entre o lançamento do dado, a espera pela resposta à firewall e a passagem de vez sem abrir espaço a estados inconsistentes, cliques duplicados ou testes lentos ao simular muitas rondas.
+
+Reflexão individual: separar explicitamente as fases do turno e centralizar a validação das regras no Game tornou o comportamento muito mais previsível e fácil de testar. Aprendi que tornar o estado pendente explícito no modelo evita remendos na interface e facilita bastante a escrita de testes determinísticos.
+
+**Cleiton Muangala** — Interface gráfica: janela e tabuleiro
+Dificuldade: sincronizar o desenho do tabuleiro, o movimento casa a casa com ritmo pausado, a animação de chegada e o diálogo da firewall com os eventos emitidos pelo modelo, sem misturar lógica de jogo dentro dos componentes Swing.
+
+Reflexão individual: ver o tabuleiro a ganhar movimento, avatares e feedback visual deu outra vida ao projeto, mas exigiu cuidado para que a vista apenas reagisse ao estado notificado. Esta fase reforçou a importância de manter os componentes gráficos focados na apresentação e na interação.
+
+**Gonçalo Veríssimo** — Dados, perguntas das firewalls, controlo e som
+Dificuldade: integrar o dado único clicável e com animação de giro, o suporte a entrada manual/determinística, o banco de perguntas das firewalls e os efeitos sonoros com opção de silêncio, mantendo tudo alinhado com o fluxo do jogo e com a interface.
+
+Reflexão individual: entrar numa fase em que o jogo já tem ritmo e feedback torna cada detalhe de interação mais visível, desde a resposta do dado ao teclado até ao controlo do som. Trabalhar nestes módulos mostrou-me como pequenas peças de usabilidade e suporte fazem diferença na experiência global de quem joga.
+>>>>>>> master
 ## 6. Próximos passos
 
 Dezembro: pontos 1–3 da secção 3, com commits de cada aluno na sua área. Primeira semana de janeiro: relatório, mockup final e contagem de linhas.
